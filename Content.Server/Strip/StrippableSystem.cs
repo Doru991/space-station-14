@@ -42,6 +42,7 @@ namespace Content.Server.Strip
             SubscribeLocalEvent<StrippableComponent, GetVerbsEvent<Verb>>(AddStripVerb);
             SubscribeLocalEvent<StrippableComponent, GetVerbsEvent<ExamineVerb>>(AddStripExamineVerb);
             SubscribeLocalEvent<StrippableComponent, ActivateInWorldEvent>(OnActivateInWorld);
+            SubscribeLocalEvent<StrippableComponent, InventoryStripDoAfterEvent>(OnInventoryDoAfter);
 
             // BUI
             SubscribeLocalEvent<StrippableComponent, StrippingSlotButtonPressed>(OnStripButtonPressed);
@@ -314,7 +315,7 @@ namespace Content.Server.Strip
         /// <summary>
         ///     Takes an item from the inventory and places it in the user's active hand.
         /// </summary>
-        private async void TakeItemFromInventory(
+        private void TakeItemFromInventory(
             EntityUid user,
             EntityUid target,
             EntityUid item,
@@ -349,8 +350,9 @@ namespace Content.Server.Strip
             var ev = new BeforeGettingStrippedEvent(userEv.Time, userEv.Stealth);
             RaiseLocalEvent(target, ev);
 
-            var doAfterArgs = new DoAfterArgs(EntityManager, user, ev.Time, new AwaitedDoAfterEvent(), null, target: target, used: item)
+            var doAfterArgs = new DoAfterArgs(EntityManager, user, ev.Time, new InventoryStripDoAfterEvent() { Taking = true, Slot = slot }, target, target, item)
             {
+                Broadcast = true,
                 ExtraCheck = Check,
                 AttemptFrequency = AttemptFrequency.EveryTick,
                 BreakOnDamage = true,
@@ -377,18 +379,8 @@ namespace Content.Server.Strip
 
             _adminLogger.Add(LogType.Stripping, LogImpact.Low, $"{ToPrettyString(user):user} is trying to strip the item {ToPrettyString(item):item} from {ToPrettyString(target):target}");
 
-            var result = await _doAfter.WaitDoAfter(doAfterArgs);
-            if (result != DoAfterStatus.Finished) return;
-
-            if (!_inventorySystem.TryUnequip(user, component.Owner, slot))
-                return;
-
-            // Raise a dropped event, so that things like gas tank internals properly deactivate when stripping
-            RaiseLocalEvent(item, new DroppedEvent(user), true);
-
-            _handsSystem.PickupOrDrop(user, item);
-            _adminLogger.Add(LogType.Stripping, LogImpact.Medium, $"{ToPrettyString(user):user} has stripped the item {ToPrettyString(item):item} from {ToPrettyString(target):target}");
-
+            _doAfter.TryStartDoAfter(doAfterArgs);
+            return;
         }
 
         /// <summary>
@@ -456,6 +448,34 @@ namespace Content.Server.Strip
             // hand update will trigger strippable update
             _adminLogger.Add(LogType.Stripping, LogImpact.Medium,
                 $"{ToPrettyString(user):user} has stripped the item {ToPrettyString(item):item} from {ToPrettyString(target):target}");
+        }
+
+        private void OnInventoryDoAfter(EntityUid uid, StrippableComponent strippable, InventoryStripDoAfterEvent args)
+        {
+            if(args.Target == null || args.Slot == null)
+            {
+                return;
+            }
+
+            _inventorySystem.TryGetSlotEntity(args.Target.Value, args.Slot, out var item);
+
+            if(item == null)
+            {
+                return;
+            }
+
+            if (args.Taking)
+            {
+                if (!_inventorySystem.TryUnequip(args.User, strippable.Owner, args.Slot))
+                    return;
+
+                // Raise a dropped event, so that things like gas tank internals properly deactivate when stripping
+                RaiseLocalEvent(item.Value, new DroppedEvent(args.User), true);
+
+                _handsSystem.PickupOrDrop(args.User, item.Value);
+                _adminLogger.Add(LogType.Stripping, LogImpact.Medium, $"{ToPrettyString(args.User):user} has stripped the item {ToPrettyString(item):item} from {ToPrettyString(args.Target):target}");
+
+            }
         }
     }
 }

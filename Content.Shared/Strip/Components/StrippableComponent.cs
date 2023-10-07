@@ -1,4 +1,5 @@
 using Content.Shared.Inventory;
+using Content.Shared.DoAfter;
 using Robust.Shared.GameStates;
 using Robust.Shared.Serialization;
 
@@ -79,5 +80,13 @@ namespace Content.Shared.Strip.Components
     public sealed class BeforeGettingStrippedEvent : BaseBeforeStripEvent
     {
         public BeforeGettingStrippedEvent(float initialTime, bool stealth = false) : base(initialTime, stealth) { }
+    }
+
+
+    [Serializable, NetSerializable]
+    public sealed partial class InventoryStripDoAfterEvent : SimpleDoAfterEvent
+    {
+        public bool Taking;
+        public string? Slot;
     }
 }

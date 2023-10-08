@@ -377,7 +377,7 @@ namespace Content.Server.Strip
                 }
             }
 
-            _adminLogger.Add(LogType.Stripping, LogImpact.Low, $"{ToPrettyString(user):user} is trying to strip the item {ToPrettyString(item):item} from {ToPrettyString(target):target}");
+            _adminLogger.Add(LogType.Stripping, LogImpact.Low, $"{ToPrettyString(user):user} is trying to strip the item {ToPrettyString(item):item} from {ToPrettyString(target):target} with a delay of {ev.Time}");
 
             _doAfter.TryStartDoAfter(doAfterArgs);
             return;

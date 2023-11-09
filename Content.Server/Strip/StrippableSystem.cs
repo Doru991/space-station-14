@@ -352,9 +352,6 @@ namespace Content.Server.Strip
 
             var doAfterArgs = new DoAfterArgs(EntityManager, user, ev.Time, new InventoryStripDoAfterEvent() { Taking = true, Slot = slot }, target, target, item)
             {
-                Broadcast = true,
-                ExtraCheck = Check,
-                AttemptFrequency = AttemptFrequency.EveryTick,
                 BreakOnDamage = true,
                 BreakOnTargetMove = true,
                 BreakOnUserMove = true,

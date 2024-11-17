@@ -126,6 +126,28 @@ public sealed partial class GunComponent : Component
 
     #endregion
 
+    #region Jamming
+
+    /// <summary>
+    /// How likely the gun currently is to fail to fire
+    /// </summary>
+    [DataField, AutoNetworkedField]
+    public float JamChance = 0f;
+
+    /// <summary>
+    /// Default jamming chance for the gun (resets to this after being cleaned)
+    /// </summary>
+    [DataField, AutoNetworkedField]
+    public float BaseJamChance = 0f;
+
+    /// <summary>
+    /// How much the jamming probability should increase for each successful shot
+    /// </summary>
+    [DataField, AutoNetworkedField]
+    public float JamChanceIncrement = 0f;
+
+    #endregion
+
     /// <summary>
     /// Whether this gun is shot via the use key or the alt-use key.
     /// </summary>

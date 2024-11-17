@@ -69,6 +69,7 @@ public abstract partial class SharedGunSystem : EntitySystem
     private const float InteractNextFire = 0.3f;
     private const double SafetyNextFire = 0.5;
     private const float EjectOffset = 0.4f;
+    private const float MaxJamChance = 1f;
     protected const string AmmoExamineColor = "yellow";
     protected const string FireRateExamineColor = "yellow";
     public const string ModeExamineColor = "cyan";
@@ -78,6 +79,7 @@ public abstract partial class SharedGunSystem : EntitySystem
         SubscribeAllEvent<RequestShootEvent>(OnShootRequest);
         SubscribeAllEvent<RequestStopShootEvent>(OnStopShootRequest);
         SubscribeLocalEvent<GunComponent, MeleeHitEvent>(OnGunMelee);
+        SubscribeLocalEvent<GunComponent, AttemptShootEvent>(OnAttemptShoot);
 
         // Ammo providers
         InitializeBallistic();
@@ -157,6 +159,19 @@ public abstract partial class SharedGunSystem : EntitySystem
             return;
 
         StopShooting(gunUid, gun);
+    }
+
+    private void OnAttemptShoot(EntityUid uid, GunComponent component, ref AttemptShootEvent args)
+    {
+        if (component.JamChance > 0f)
+        {
+            var rand = new System.Random((int)Timing.CurTick.Value);
+            if (rand.Prob(component.JamChance))
+            {
+                args.Cancelled = true;
+                args.Message = "The gun fails to fire!";
+            }
+        }
     }
 
     public bool CanShoot(GunComponent component)
@@ -378,6 +393,8 @@ public abstract partial class SharedGunSystem : EntitySystem
         }
 
         // Shoot confirmed - sounds also played here in case it's invalid (e.g. cartridge already spent).
+        gun.JamChance += gun.JamChanceIncrement;
+        gun.JamChance = Math.Min(gun.JamChance, MaxJamChance);
         Shoot(gunUid, gun, ev.Ammo, fromCoordinates, toCoordinates.Value, out var userImpulse, user, throwItems: attemptEv.ThrowItems);
         var shotEv = new GunShotEvent(user, ev.Ammo);
         RaiseLocalEvent(gunUid, ref shotEv);

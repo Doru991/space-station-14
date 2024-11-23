@@ -1,9 +1,14 @@
 using Content.Shared.Actions;
 using Content.Shared.Examine;
 using Content.Shared.Hands;
+using Content.Shared.Interaction;
 using Content.Shared.Verbs;
 using Content.Shared.Weapons.Ranged.Components;
+using Content.Shared.DoAfter;
 using Robust.Shared.Utility;
+using Content.Shared.Weapons.Ranged.Events;
+using Content.Shared.Burial.Components;
+using Content.Shared.Burial;
 
 namespace Content.Shared.Weapons.Ranged.Systems;
 
@@ -137,5 +142,28 @@ public abstract partial class SharedGunSystem
 
         component.NextFire = minimum;
         Dirty(uid, component);
+    }
+
+    private void OnInteractUsing(EntityUid uid, GunComponent component, InteractUsingEvent args)
+    {
+        if (TryComp<GunCleanerComponent>(args.Used, out var cleaner))
+        {
+            var doAfterEventArgs = new DoAfterArgs(EntityManager, args.User, TimeSpan.FromSeconds(4) / cleaner.SpeedModifier, new GunCleanDoAfterEvent(), uid, target: args.Target, used: uid)
+            {
+                BreakOnMove = true,
+                BreakOnWeightlessMove = true,
+                NeedHand = true,
+            };
+            _doAfter.TryStartDoAfter(doAfterEventArgs);
+        }
+
+        args.Handled = true;
+    }
+
+    private void OnGunClean(EntityUid uid, GunComponent component, GunCleanDoAfterEvent args)
+    {
+        if (args.Cancelled || args.Handled)
+            return;
+        component.JamChance = component.BaseJamChance;
     }
 }
